@@ -1,0 +1,127 @@
+#ifndef UMASS_ZEROCROSSING_H
+#define UMASS_ZEROCROSSING_H
+
+// a class that does zero crossing analysis to extract the frequency of a signal 
+
+#include <cstdlib> 
+#include <iostream>
+#include "UMMath.h"
+
+#define MAX_SIZE 1E+6 
+
+class UMZeroCrossing{
+
+   private:
+      bool fUseTimeRange;                                     // do zero crossings over a specified range in time 
+      bool fUseMidpoint,fUseLinearInterp,fUseLeastSq;         // booleans for each method  
+      bool fUseIntegerCycles;                                 // use only integer number of cycles in calculation 
+
+      int fVerbosity;         
+      int fNPTS;                                              // number of points to use in least squares fitting 
+      int fNPTSUseable;                                       // number of points to use in least squares fitting (useable; we may have less -- see StoreData method) 
+      int fStep;                                              // number of points to skip in counting zero crossings
+      int *fZC;                                               // number of zero crossings 
+      int fNZC;                                               // number of zero crossings (single pulse) 
+      
+      double fTMin,fTMax;                                     // time range to consider when fUseTimeRange is true 
+      double *fX,*fY,*fEY;                                    // "analysis arrays": store data for fitting here  
+      double *fFREQ;                                          // final frequency results 
+      double *fFREQ_ph;                                       // final frequency results (phase fit of t_zc)  
+      double *fNC;                                            // number of cycles
+      double fSampleFreq;                                     // sample frequency
+      double fExpFreq;                                        // expected frequency  
+
+      int *fNCrossing,*fCrossingIndex;
+
+      double *fTcross,*fVcross;
+      double *fFreqAtCrossing,*fNumCycles;
+
+      void Reset(); 
+      void ClearAnaArrays(); 
+      void ClearVectors(); 
+      void InitAnaArrays();
+      void PrintVectorData(int Type,int PulseNumber); 
+      void CountZeroCrossings(int method,UMPulse *aPulse);   // uses the UMMath::CountZeroCrossings function 
+      void SetNumPointsForFits(int n); 
+      void SetStepSize(int i)                               {fStep = i;     } 
+
+      int CalculateFrequencies(int &TrueNumCrossings,double &FreqFullRange);
+     
+      double GetFrequencyFromPhaseFit(); 
+
+   public:
+      UMZeroCrossing();
+      ~UMZeroCrossing();
+
+      void UseAll(){
+         UseMidpoint(); 
+         UseLinearInterpolation();
+         UseLeastSquares();
+      }
+
+      void UseTimeRange(bool val=true){
+         if(val) std::cout << "[UMZeroCrossing]: Will use time range in counting zero crossings." << std::endl;
+         fUseTimeRange = val;
+      }  
+      void UseMidpoint(bool v=true){
+         if(v) std::cout << "[UMZeroCrossing]: Will use midpoint method." << std::endl;
+         fUseMidpoint = v;
+      }
+      void UseLinearInterpolation(bool v=true){
+         if(v) std::cout << "[UMZeroCrossing]: Will use linear interpolation method." << std::endl;
+         fUseLinearInterp = v;
+      }
+      void UseLeastSquares(bool v=true){
+         if(v) std::cout << "[UMZeroCrossing]: Will use least squares method." << std::endl;
+         fUseLeastSq = v;
+      }
+
+      void UseIntegerCycles(bool v=true){
+         if(v) std::cout << "[UMZeroCrossing]: Will use integer number of cycles ONLY." << std::endl;
+         fUseIntegerCycles = v;
+      }
+
+      void SetupForRun()                             { fFileManager->InitOutputDirectory(); }
+      
+      void UpdateFileManager(UMFileManager *fm)     { fFileManager->Update(fm); }  
+
+      void UpdateParameters();                                              // update fNPTS and fStep  
+      void SetFileManager(UMFileManager *fm)        {fFileManager = new UMFileManager(fm);}  
+      void SetVerbosity(int v)                       {fVerbosity   = v; } 
+      void SetSampleFrequency(double f)              {fSampleFreq  = f; } 
+      void SetExpectedFrequency(double f)            {fExpFreq     = f; } 
+      void SetMinTime(double t)                      {fTMin        = t; } 
+      void SetMaxTime(double t)                      {fTMax        = t; }
+      void SetTimeRange(double tmin,double tmax){
+         fTMin = tmin;
+         fTMax = tmax;
+      }     
+
+      int Calculate(UMPulse *aPulse);                                       // runs the calculation based on choices 
+      int GetNumAnaBins()                       const {return fNZC;}  
+      int GetCrossingNumber(int i)              const {return fNCrossing[i];}  
+      int GetCrossingIndex(int i)               const {return fCrossingIndex[i];}  
+      int GetNumZeroCrossingsMidpoint()         const {return fZC[0];} 
+      int GetNumZeroCrossingsLinearInterp()     const {return fZC[1];} 
+      int GetNumZeroCrossingsLeastSquares()     const {return fZC[2];} 
+
+      double GetNumCyclesMidpoint()             const {return fNC[0];} 
+      double GetNumCyclesLinearInterp()         const {return fNC[1];} 
+      double GetNumCyclesLeastSquares()         const {return fNC[2];} 
+
+      double GetFrequencyMidpoint()             const {return fFREQ[0];} 
+      double GetFrequencyLinearInterp()         const {return fFREQ[1];} 
+      double GetFrequencyLeastSquares()         const {return fFREQ[2];} 
+
+      double GetFrequencyMidpointPhaseFit()     const {return fFREQ_ph[0];} 
+      double GetFrequencyLinearInterpPhaseFit() const {return fFREQ_ph[1];} 
+      double GetFrequencyLeastSquaresPhaseFit() const {return fFREQ_ph[2];} 
+
+      double GetTimeAtCrossing(int i)           const {return fTcross[i];} 
+      double GetVoltageAtCrossing(int i)        const {return fVcross[i];} 
+      double GetFrequencyAtCrossing(int i)      const {return fFreqAtCrossing[i];} 
+      double GetNumberOfCylces(int i)           const {return fNumCycles[i];} 
+
+};
+
+#endif 
