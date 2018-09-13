@@ -6,7 +6,7 @@
 #include <string.h> 
 
 namespace NMRUtility{ 
-   int AreEquivStrings(const char *s1,const char *s2); 
+   int AreEquivStrings(const char *s1,const char *s2);
 }
 
 #endif 
