@@ -23,10 +23,10 @@ TARGET_LIB = lib$(LIBRARY).so
  
 # sources 
 SRCDIRS = $(shell find $(SRCDIR) -type d | sed 's/$(SRCDIR)/./g' )
-SRCS    = $(SRCDIR)/UMMath.cpp               \
-          $(SRCDIR)/UMZeroCrossing.cpp       \
-          $(SRCDIR)/UMUtility.cpp            \
-          $(SRCDIR)/UMBaselineCorrection.cpp \
+SRCS    = $(SRCDIR)/UMMath.cc               \
+          $(SRCDIR)/UMZeroCrossing.cc       \
+          $(SRCDIR)/UMUtility.cc            \
+          $(SRCDIR)/UMBaselineCorrection.cc \
 # objects 
 OBJS    = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SRCS))
 
