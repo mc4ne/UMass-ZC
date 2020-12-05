@@ -6,6 +6,9 @@
 #include <cstdlib> 
 #include <iostream>
 #include <fstream> 
+#include <cmath>
+#include <cfloat>
+#include <vector> 
 #include <string.h>
 
 // #if USEGPUFID == 1
@@ -41,6 +44,11 @@ namespace UMass {
       }; 
  
       void ClearAnaArrays(int N,double *X,double *Y,double *EY); 
+
+      double GetMean(std::vector<double> v);
+      double GetVariance(std::vector<double> v);
+      double GetStandardDeviation(std::vector<double> v);
+      double GetCovariance(std::vector<double> x,std::vector<double> y); 
 
       double ConvertToVoltage3316(double adc_reading); 
       double GetT2Time(NMRPulse *aPulse); 

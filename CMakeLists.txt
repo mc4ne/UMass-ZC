@@ -38,18 +38,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #----------------------------------------------------------------------------
 # Directories relevant for this project 
-include_directories(${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIR}
+include_directories(${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 #----------------------------------------------------------------------------
-# sources and headers for the project 
+# Sources and headers for the project 
 file(GLOB SOURCES ${PROJECT_SOURCE_DIR}/src/*.cc)
 file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.hh)
+
+#----------------------------------------------------------------------------
+# Generate the shared library from sources 
+add_library (${LIB_NAME} SHARED ${SOURCES})
+target_link_libraries (${LIB_NAME} ${ROOT_LIBRARIES})
 
 #----------------------------------------------------------------------------
 # Install items 
 install (TARGETS ${LIB_NAME} DESTINATION ${INSTALL_DIR})
 install (FILES ${HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 # install(DIRECTORY ${PROJECT_SOURCE_DIR}/examples DESTINATION ${CMAKE_INSTALL_PREFIX})
-
-

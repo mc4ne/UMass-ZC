@@ -1,4 +1,4 @@
-#include "NMRPulse.h"
+#include "NMRPulse.hh"
 
 namespace UMass { 
    //______________________________________________________________________________

@@ -1,4 +1,4 @@
-#include "UMZeroCrossing.h"
+#include "UMZeroCrossing.hh"
 
 namespace UMass { 
    ZCTest::ZCTest(){

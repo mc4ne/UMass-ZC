@@ -3,6 +3,10 @@
 
 // a class to handle the baseline corrections 
 
+#include <iostream>
+#include <cmath> 
+#include <cfloat> 
+
 //#include "dsp_cpu.h"
 //#include "NMRPulse.h"
 #include "zcInputParameters.hh"

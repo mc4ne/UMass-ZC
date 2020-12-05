@@ -1,4 +1,4 @@
-#include "UMBaselineCorrection.h"
+#include "UMBaselineCorrection.hh"
 
 namespace UMass {
    //______________________________________________________________________________
@@ -197,7 +197,7 @@ namespace UMass {
       }
 
       // double rms    = dsp::rms(Noise); 
-      double mean   = dsp::mean(Noise);
+      double mean   = Utility::GetMean(Noise);
       double offset = mean;
       Noise.clear();
 
@@ -244,7 +244,7 @@ namespace UMass {
 	    // std::cout << "counter = " << counter << "\t" << "NSamples = " << NSamples << std::endl;
 	    // achieved the desired number of samples 
 	    for(int j=0;j<NSamples;j++) x.push_back( myPulse->GetTime(j) );
-	    t_mean = dsp::mean(x);
+	    t_mean = Utility::GetMean(x);
 	    v_mean = GetOffsetZC(input_offset,step,myPulse);
 	    // std::cout << "t_mean = " << t_mean << "\t" << "v_mean = " << v_mean << std::endl;
 	    // cin >> dummy;

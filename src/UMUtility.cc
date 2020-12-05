@@ -1,4 +1,4 @@
-#include "UMUtility.h"
+#include "UMUtility.hh"
 //______________________________________________________________________________
 namespace UMass { 
    namespace Utility {
@@ -213,11 +213,11 @@ namespace UMass {
 	    Y[i] = y[i]; 
 	 } 
 
-	 double mean_x = dsp::mean(X);
-	 double mean_y = dsp::mean(Y);
-	 double var_x  = dsp::variance(X);
-	 double var_y  = dsp::variance(Y);
-	 double cov_xy = dsp::covariance(X,Y);
+	 double mean_x = GetMean(X);
+	 double mean_y = GetMean(Y);
+	 double var_x  = GetVariance(X);
+	 double var_y  = GetVariance(Y);
+	 double cov_xy = GetCovariance(X,Y);
 
 	 double ss_xx = ( (double)N )*var_x;
 	 double ss_yy = ( (double)N )*var_y;
@@ -250,11 +250,11 @@ namespace UMass {
 	 double num=0,rsq=0;
 
 	 int N         = x.size();
-	 double mean_x = dsp::mean(x);
-	 double mean_y = dsp::mean(y);
-	 double var_x  = dsp::variance(x);
-	 double var_y  = dsp::variance(y);
-	 double cov_xy = dsp::covariance(x,y);
+	 double mean_x = GetMean(x);
+	 double mean_y = GetMean(y);
+	 double var_x  = GetVariance(x);
+	 double var_y  = GetVariance(y);
+	 double cov_xy = GetCovariance(x,y);
 
 	 double ss_xx = ( (double)N )*var_x;
 	 double ss_yy = ( (double)N )*var_y;
@@ -452,6 +452,56 @@ namespace UMass {
 	 ClearAnaArrays(NPTSUseable,X,Y,EY);                   // clears fX, fY, fEY  (sets to zero) 
 
 	 return cntr;   // return number of zero crossings  
+      }
+      //______________________________________________________________________________
+      double GetMean(std::vector<double> v){
+	 double sum = 0;
+	 const int N = v.size();
+	 for(int i=0;i<N;i++){
+	    sum += v[i];
+	 }
+	 double arg  = sum/( (double)N );
+	 double mean = arg;
+	 return mean;
+      }
+      //______________________________________________________________________________
+      double GetStandardDeviation(std::vector<double> v){
+
+	 double sum  = 0;
+	 double mean = GetMean(v);
+	 const int N = v.size();
+	 for(int i=0;i<N;i++){
+	    sum += pow(v[i]-mean,2.);
+	 }
+
+	 double var = sum/( (double)N );
+	 double sd  = sqrt(var);
+	 return sd;
+      }
+      //______________________________________________________________________________
+      double GetVariance(std::vector<double> v){
+	 double sum  = 0;
+	 double mean = GetMean(v);
+	 const int N = v.size();
+	 for(int i=0;i<N;i++){
+	    sum += pow(v[i]-mean,2.);
+	 }
+	 double var = sum/( (double) N);
+	 return var;
+      }
+      //______________________________________________________________________________
+      double GetCovariance(std::vector<double> x,std::vector<double> y){
+	 double mean_x = GetMean(x);
+	 double mean_y = GetMean(y);
+	 double sum=0,diff_x=0,diff_y=0;
+	 const int N = x.size();
+	 for(int i=0;i<N;i++){
+	    diff_x = x[i]-mean_x;
+	    diff_y = y[i]-mean_y;
+	    sum   += diff_x*diff_y;
+	 }
+	 double cov = sum/( (double) N);
+	 return cov;
       }
    } //::Utility 
 } //::UMass
