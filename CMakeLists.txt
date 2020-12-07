@@ -49,7 +49,6 @@ file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.hh)
 #----------------------------------------------------------------------------
 # Generate the shared library from sources 
 add_library (${LIB_NAME} SHARED ${SOURCES})
-target_link_libraries (${LIB_NAME} ${ROOT_LIBRARIES})
 
 #----------------------------------------------------------------------------
 # Install items 
