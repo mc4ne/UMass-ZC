@@ -1,5 +1,5 @@
 # UMass-ZC
-Zero crossing algorithm for NMR signal analysis.
+A C++ library containing a zero crossing counting algorithm to extract the frequency of an input NMR signal.
 
 # System Requirements 
 Your system needs to have CMake version 3.9 or higher and C++11 or higher.   
