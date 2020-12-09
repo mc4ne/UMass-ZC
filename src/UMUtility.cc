@@ -7,7 +7,7 @@ namespace UMass {
 	 const int N = aPulse->GetNumPoints();
 	 char outStr[500];
 	 std::ofstream outfile;
-         outfile.open(outpath);
+	 outfile.open(outpath);
 	 if( outfile.fail() ){
 	    std::cout << "[Utility::PrintSignalToFile]: Cannot open the file: " << outpath << std::endl;
 	    return 1;
@@ -24,36 +24,36 @@ namespace UMass {
       //______________________________________________________________________________
       int CutPlungingProbeData(std::vector<double> &t,std::vector<double> &v){
 	 // a data-quality cut on PP data
-         // - tMin: We know that we have to cut out the first 1 us of data to avoid 
-         //   an odd "ground level synchronization" that we see between the DAQ and the ADC
-         // - tMax: We need to avoid the last 0.5 ms of data because of the Radant MEMS 
-         //   which causes a level change 
-         int N = t.size();
-         double tMin = 1E-6; 
-         double tMax = t[N-1] - 0.5E-3;
+	 // - tMin: We know that we have to cut out the first 1 us of data to avoid 
+	 //   an odd "ground level synchronization" that we see between the DAQ and the ADC
+	 // - tMax: We need to avoid the last 0.5 ms of data because of the Radant MEMS 
+	 //   which causes a level change 
+	 int N = t.size();
+	 double tMin = 1E-6; 
+	 double tMax = t[N-1] - 0.5E-3;
 	 std::vector<double> tt,vv;
-         for(int i=0;i<N;i++){
+	 for(int i=0;i<N;i++){
 	    if(t[i]>tMin && t[i]<tMax) {
-               tt.push_back(t[i]); 
+	       tt.push_back(t[i]); 
 	       vv.push_back(v[i]); 
 	    }
-         }
-         // clear original vectors and set with cut values  
+	 }
+	 // clear original vectors and set with cut values  
 	 t.clear();
-         v.clear();
-         N = tt.size();
-         for(int i=0;i<N;i++){
+	 v.clear();
+	 N = tt.size();
+	 for(int i=0;i<N;i++){
 	    t.push_back(tt[i]); 
 	    v.push_back(vv[i]); 
-         } 
-         return 0;
+	 } 
+	 return 0;
       }
       //______________________________________________________________________________
       int ConvertToVoltage(int type,std::vector<double> &v){
 	 const int N = v.size();
-         for(int i=0;i<N;i++){
+	 for(int i=0;i<N;i++){
 	    if(type==k3316) v[i] = ConvertToVoltage3316(v[i]); 
-         } 
+	 } 
 	 return 0;
       }
       //______________________________________________________________________________
@@ -76,9 +76,74 @@ namespace UMass {
 	 double p1        = 12629.5;
 	 double v         = (adc - p0)/p1;
 	 return v;
+      }
+      //______________________________________________________________________________
+      double GetT2Time(int startIndex,NMRPulse *aPulse){
+
+	 std::vector<double> tm,vm;
+	 int rc = FindLocalMaxima(startIndex,aPulse,tm,vm);   // first find local maxima 
+	 if(rc!=0) return -1; 
+
+	 double v=0,vmax=-300;
+	 const int ND = aPulse->GetNumPoints();
+	 for(int i=startIndex;i<ND;i++){
+	    v = aPulse->GetVoltage(i); 
+	    if(vmax<v) vmax = v;
+	 }
+
+	 double t2_time=0;
+	 double e_const = exp(1);
+	 double v_lo    = 0.95*vmax/e_const;
+	 double v_hi    = 1.05*vmax/e_const;
+
+	 // std::cout << "[GetT2Time]: Target voltage is " << vmax/e_const << std::endl;
+	 // std::cout << "             lo = " << v_lo << " hi = " << v_hi << std::endl;
+
+	 const int N = tm.size();
+	 std::vector<double> tt,vv;
+	 for(int i=0;i<N;i++){
+	    if( fabs(vm[i])>v_lo && fabs(vm[i])<v_hi ){
+	       tt.push_back(tm[i]);
+	       vv.push_back(vm[i]);
+	    }
+	 }
+
+	 const int M = tt.size();
+	 // std::cout << M << " possible T2 times " << std::endl;
+	 // for(int i=0;i<M;i++) std::cout << Form("%.5lf, %.5lf",tt[i],vv[i]) << std::endl;
+
+	 if(M==0) return -1;
+	 bool isBreak=false;
+
+	 double vdiff=0,vdiff_pct=0,tdiff=0;
+	 double v_prev = vv[0];
+	 double t_prev = tt[0];
+	 for(int i=1;i<M;i++){
+	    vdiff     = fabs(v_prev-vv[i]);
+	    vdiff_pct = vdiff/fabs(v_prev+vv[i]);
+	    tdiff     = fabs(t_prev-tt[i]);
+	    if(vdiff_pct>0.50 || tdiff>1E-3){   // greater than 50% change in voltage or larger than 1 ms step, probably junk
+	       t2_time = tt[i-1];  // take previous time! 
+	       isBreak = true;
+	       break;
+	    }
+	    v_prev = vv[i];
+	    t_prev = tt[i];
+	 }
+
+	 // we went through all data, and haven't found a weird step that
+	 // warrants using the last reasonable time 
+	 if(!isBreak){
+	    // std::cout << "All candiates looked reasonable -- taking last one" << std::endl;
+	    t2_time = tt[M-1];
+	 }
+
+	 // std::cout << "The T2 time is: " << t2_time/1E-3 << " ms" << std::endl;
+
+	 return t2_time;
       } 
       //______________________________________________________________________________
-      double GetT2Time(NMRPulse *aPulse){
+      double GetT2Time_old(NMRPulse *aPulse){
 	 // find the T2 time of the signal
 	 // find max amplitude 
 	 double vmax=-300,v=0;
@@ -101,6 +166,57 @@ namespace UMass {
 	 }
 	 // std::cout << "T2 TIME IS " << t2_time << std::endl; 
 	 return t2_time;
+      }
+      //______________________________________________________________________________
+      int FindLocalMaxima(int startIndex,NMRPulse *aPulse,std::vector<double> &T,std::vector<double> &V){
+	 // find all local maxima from a set of data
+	 const int N = aPulse->GetNumPoints();
+	 double v=0,vp=0,vn=0,t=0;
+	 std::vector<double> tt,vv;
+	 for(int i=startIndex;i<N;i++){
+	    t  = aPulse->GetTime(i); 
+	    v  = aPulse->GetVoltage(i);
+	    vp = aPulse->GetVoltage(i-1);
+	    vn = aPulse->GetVoltage(i+1);
+	    if(v>0){
+	       // chop off all negative values to start 
+	       if(v>vp && v>vn){
+		  // is the value greater than preivous AND greater than the next entry?
+		  // looks like a maximum, keep it 
+		  tt.push_back(t);
+		  vv.push_back(v);
+	       }
+	    }
+	 }
+	 int stepSize = 10E+6*2.5E-6; // 10 MHz * 2.5 us 
+	 int rc = RebinData(stepSize,tt,vv,T,V);
+	 return rc;
+      }
+      //______________________________________________________________________________
+      int RebinData(int stepSize,std::vector<double> x,std::vector<double> y,
+	    std::vector<double> &X,std::vector<double> &Y){
+	 int cntr=0;
+	 double mx=0,my=0;
+	 const int N = x.size();
+	 std::vector<double> xx,yy;
+	 for(int i=0;i<N;i++){
+	    // gather data
+	    xx.push_back(x[i]);
+	    yy.push_back(y[i]);
+	    cntr++;
+	    if(cntr==stepSize){
+	       // if we hit the stepSize limit, average over data  
+	       mx = GetMean(xx);
+	       my = GetMean(yy);
+	       // store and clear for next samples 
+	       X.push_back(mx);
+	       Y.push_back(my);
+	       xx.clear();
+	       yy.clear();
+	       cntr=0;
+	    }
+	 }
+	 return 0;
       }
       //______________________________________________________________________________
       int StoreData(int verbosity,int i,int NPTS,NMRPulse *aPulse,double *X,double *Y,double *EY){
@@ -179,24 +295,24 @@ namespace UMass {
 	    EY[i] = 0; 
 	 }
       }
+      //______________________________________________________________________________
+      double LinearInterpolationForY(double x,double x0,double y0,double x1,double y1){
+         double b = (x-x0)/(x1-x0);
+         double y = y0 + b*(y1-y0);
+         return y;
+      }
+      //______________________________________________________________________________
+      double LinearInterpolationForX(double y,double x0,double y0,double x1,double y1){
+         double b = (y-y0)/(y1-y0);
+         double x = x0 + b*(x1-x0);
+         return x;
+      }
       // //______________________________________________________________________________
-      // double LinearInterpolationForY(double x,double x0,double y0,double x1,double y1){
+      // double LinearInterpolation(double x,double x0,double y0,double x1,double y1){
       //    double b = (x-x0)/(x1-x0);
       //    double y = y0 + b*(y1-y0);
       //    return y;
       // }
-      // //______________________________________________________________________________
-      // double LinearInterpolationForX(double y,double x0,double y0,double x1,double y1){
-      //    double b = (y-y0)/(y1-y0);
-      //    double x = x0 + b*(x1-x0);
-      //    return x;
-      // }
-      //______________________________________________________________________________
-      double LinearInterpolation(double x,double x0,double y0,double x1,double y1){
-	 double b = (x-x0)/(x1-x0);
-	 double y = y0 + b*(y1-y0);
-	 return y;
-      }
       //______________________________________________________________________________
       int LeastSquaresFitting(int N,double *x,double *y,double &a,double &b,double &r){
 
@@ -292,8 +408,8 @@ namespace UMass {
 	    t0 = (t_current + t_next)/2.;
 	 }else if(method==kLinearInterpolation){
 	    // method 2: get time at V = 0, linear interpolation  
-	    // t0 = LinearInterpolationForX(v0,t_current,v_current,t_next,v_next);
-	    t0 = LinearInterpolation(v0,v_current,t_current,v_next,t_next);
+	    t0 = LinearInterpolationForX(v0,t_current,v_current,t_next,v_next);
+	    // t0 = LinearInterpolation(v0,v_current,t_current,v_next,t_next);
 	    // std::cout << "linear interpolation: t_current = " << t_current << "\t" 
 	    //           << "t_next = " << t_next << "\t" << "t0 = " << t0 << std::endl;
 	 }else if(method==kLeastSquares){
@@ -313,8 +429,8 @@ namespace UMass {
 		  std::cout << "                                t_min = " << X[0] << "\t" 
 		     << "t_max = " << X[SIZE-1] << "\t" << "t0 = " << t0 << std::endl;
 	       }
-	       // t0 = LinearInterpolationForX(v0,t_current,v_current,t_next,v_next);
-	       t0 = LinearInterpolation(v0,v_current,t_current,v_next,t_next);
+	       t0 = LinearInterpolationForX(v0,t_current,v_current,t_next,v_next);
+	       // t0 = LinearInterpolation(v0,v_current,t_current,v_next,t_next);
 	       if(verbosity>=3){
 		  std::cout << "[UMUtility::GetTimeOfCrossing]: linear interpolation: t_current = " << t_current << "\t" 
 		     << " t_next = " << t_next << "\t" << "t0 = " << t0 << std::endl;
@@ -503,5 +619,316 @@ namespace UMass {
 	 double cov = sum/( (double) N);
 	 return cov;
       }
+      //______________________________________________________________________________
+      int NonLinearLeastSquaresFitting(std::vector<double> x,std::vector<double> y,std::vector<double> dy,
+	    int (*F)(const gsl_vector *x,void *data,gsl_vector *f),int (*DF)(const gsl_vector *x,void *data,gsl_matrix *J),
+	    std::vector<double> &par,std::vector<double> &parErr,const int NPAR,const int verbosity){
+	 // fit the data set (x,y) with uncertainties dy to the function F with jacobian DF  
+	 // par will have initial values to start 
+
+	 const int NPTS = x.size();
+
+	 double chisq,chisq0;
+
+	 const double xtol = 1e-8;
+	 const double gtol = 1e-8;
+	 const double ftol = 0.0;
+
+	 gsl_rng *r;  // random number generator 
+	 gsl_rng_env_setup();
+	 r = gsl_rng_alloc(gsl_rng_default);
+
+	 // data set
+	 char msg[200];
+	 double xa[NPTS],ya[NPTS],weights[NPTS];
+
+	 if(verbosity>1) std::cout << "Input data: " << std::endl;
+	 for(int i=0;i<NPTS;i++){
+	    xa[i] = x[i];
+	    ya[i] = y[i];
+	    if(dy[i]!=0){ 
+	       weights[i] = 1./( dy[i]*dy[i] );
+	    }else{
+	       weights[i] = 1.;
+	    }
+	    sprintf(msg,"i = %03d, x = %.5E, y = %.3lf",i,xa[i],ya[i]);
+	    if(verbosity>1) std::cout << msg << std::endl;
+	 }
+	 data_t d = {(size_t)NPTS,xa,ya};
+	 double parInit[NPAR]; // starting values
+	 for(int i=0;i<NPAR;i++) parInit[i] = par[i];
+	 gsl_vector_view xx  = gsl_vector_view_array(parInit,(size_t)NPAR);
+	 gsl_vector_view wts = gsl_vector_view_array(weights,(size_t)NPTS);
+
+	 // define the function to be minimized 
+	 gsl_multifit_nlinear_fdf fitFunc;
+	 gsl_multifit_nlinear_parameters fitFunc_params = gsl_multifit_nlinear_default_parameters();
+	 fitFunc.f      = F;
+	 fitFunc.df     = DF;          // set to NULL for finite-difference Jacobian 
+	 fitFunc.fvv    = NULL;         // not using geodesic acceleration 
+	 fitFunc.n      = (size_t)NPTS; // number of data points 
+	 fitFunc.p      = (size_t)NPAR; // number of parameters
+	 fitFunc.params = &d;           // data object (NPTS, array of data).
+
+	 // allocate workspace with default parameters 
+	 gsl_multifit_nlinear_workspace *w;
+	 const gsl_multifit_nlinear_type *T = gsl_multifit_nlinear_trust;
+	 w = gsl_multifit_nlinear_alloc(T,&fitFunc_params,NPTS,NPAR);
+
+	 // initialize solver with starting point and weights 
+	 gsl_multifit_nlinear_winit(&xx.vector,&wts.vector,&fitFunc,w);
+
+	 // compute initial cost function 
+	 gsl_vector *f;
+	 f = gsl_multifit_nlinear_residual(w);
+	 gsl_blas_ddot(f,f,&chisq0);
+
+	 // solve the system with a maximum of 200 iterations
+	 int info=-1;
+	 int status = gsl_multifit_nlinear_driver(200,xtol,gtol,ftol,callbackFunction,NULL,&info,w);
+
+	 // compute covariance of best fit parameters 
+	 gsl_matrix *J;
+	 gsl_matrix *covar = gsl_matrix_alloc(NPAR,NPAR);
+	 J = gsl_multifit_nlinear_jac(w);
+	 gsl_multifit_nlinear_covar (J,0.0,covar);
+
+	 // compute final cost 
+	 gsl_blas_ddot(f,f,&chisq);
+
+	 std::string stopReason = "small step size";
+	 if(info!=1) stopReason = "small gradient";
+
+	 double dof = (double)(NPTS-NPAR);
+	 double c   = GSL_MAX_DBL( 1,sqrt(chisq/dof) );
+	 for(int i=0;i<NPAR;i++){
+	    par[i]    = gsl_vector_get(w->x,i);
+	    parErr[i] = c*sqrt( gsl_matrix_get(covar,i,i) );
+	 }
+
+	 if(verbosity>0){
+	    std::cout << "------------------ FIT SUMMARY ------------------" << std::endl;
+	    sprintf(msg,"Summary from method %s/%s",gsl_multifit_nlinear_name(w),gsl_multifit_nlinear_trs_name(w));
+	    std::cout << msg << std::endl;
+	    sprintf(msg,"Number of iterations: %zu",gsl_multifit_nlinear_niter(w) );
+	    std::cout << msg << std::endl;
+	    sprintf(msg,"Function evaluations: %zu",fitFunc.nevalf);
+	    std::cout << msg << std::endl;
+	    sprintf(msg,"Jacobian evaluations: %zu",fitFunc.nevaldf);
+	    std::cout << msg << std::endl;
+	    sprintf(msg,"Reason for stopping:  %s" ,stopReason.c_str());
+	    std::cout << msg << std::endl;
+	    sprintf(msg,"initial |f(x)|:       %.3lf",sqrt(chisq0) );
+	    std::cout << msg << std::endl;
+	    sprintf(msg,"final |f(x)|:         %.3lf",sqrt(chisq)  );
+	    std::cout << msg << std::endl;
+	    sprintf(msg,"status:               %s",gsl_strerror(status));
+	    std::cout << msg << std::endl;
+	    std::cout << "------------------ FIT RESULTS ------------------" << std::endl;
+	    sprintf(msg,"chisq/ndf = %.3lf",chisq/dof);
+	    std::cout << msg << std::endl;
+	    for(int i=0;i<NPAR;i++){
+	       sprintf(msg,"par[%d] = %.5lf +/- %.5lf",i,par[i],parErr[i]);
+	       std::cout << msg << std::endl;
+	    }
+	 }
+
+	 gsl_multifit_nlinear_free(w);
+	 gsl_matrix_free(covar);
+	 gsl_rng_free(r);
+
+	 return 0;
+      }
+      //______________________________________________________________________________
+      void callbackFunction(const size_t iter,void *params,const gsl_multifit_nlinear_workspace *w){
+	 // function the user calls 
+	 gsl_vector *f = gsl_multifit_nlinear_residual(w);
+	 gsl_vector *x = gsl_multifit_nlinear_position(w);
+
+	 // compute reciprocal condition number of J(x) 
+	 double rcond;
+	 gsl_multifit_nlinear_rcond(&rcond,w);
+	 double cond = 1./rcond; 
+
+	 double abs_f = gsl_blas_dnrm2(f); 
+
+	 const int NPAR = 5; 
+	 double par[NPAR];
+	 for(int i=0;i<NPAR;i++) par[i] = gsl_vector_get(x,i);
+
+	 char msg[200];
+	 sprintf(msg,"iter %2zu: par[0] = %.5f, par[1] = %.5f, par[2] = %.5f, par[3] = %.5f, par[4] = %.5f, cond(J) = %.5lf, |f(x)| = %.5lf",
+	       iter,par[0],par[1],par[2],par[3],par[4],cond,abs_f);
+	 // std::cerr << msg << std::endl;
+      }
+      //______________________________________________________________________________
+      int poly3(const gsl_vector *x,void *data,gsl_vector *f){
+	 // fit function f(x) = p0 + p1*x + p2*x^3
+	 // data set 
+	 size_t n   = ( (data_t *)data )->n;
+	 double *xa = ( (data_t *)data )->x;
+	 double *ya = ( (data_t *)data )->y;
+	 // fit parameters 
+	 const int npar = 3;
+	 double par[npar];
+	 for(int i=0;i<npar;i++){
+	    par[i] = gsl_vector_get(x,i);
+	 }
+	 // compute chi^2 function 
+	 double iy=0;
+	 for(size_t i=0;i<n;i++){
+	    iy = par[0] + par[1]*xa[i] + par[2]*pow(xa[i],3.);
+	    gsl_vector_set(f,i,iy-ya[i]);
+	 }
+	 return GSL_SUCCESS;
+      }
+      //______________________________________________________________________________
+      int poly3_df(const gsl_vector *x,void *data,gsl_matrix *J){
+	 // Jacobian for fit function f(x) = p0 + p1*x + p2*x^3
+	 // data set 
+	 size_t n   = ( (data_t *)data )->n;
+	 double *xa = ( (data_t *)data )->x;
+	 // compute jacobian for each data point  
+	 double arg_i0=0,arg_i1=0,arg_i2=0;
+	 for(size_t i=0;i<n;i++){
+	    arg_i0 = 1.0;
+	    arg_i1 = pow(xa[i],1.);
+	    arg_i2 = pow(xa[i],3.);
+	    gsl_matrix_set(J,i,0,arg_i0);
+	    gsl_matrix_set(J,i,1,arg_i1);
+	    gsl_matrix_set(J,i,2,arg_i2);
+	 }
+	 return GSL_SUCCESS;
+      }
+      //______________________________________________________________________________
+      int poly5(const gsl_vector *x,void *data,gsl_vector *f){
+	 // fit function f(x) = p0 + p1*x + p2*x^3 + p3*x^5
+	 // data set 
+	 size_t n   = ( (data_t *)data )->n;
+	 double *xa = ( (data_t *)data )->x;
+	 double *ya = ( (data_t *)data )->y;
+	 // fit parameters 
+	 const int npar = 4;
+	 double par[npar];
+	 for(int i=0;i<npar;i++){
+	    par[i] = gsl_vector_get(x,i);
+	 }
+	 // compute chi^2 function 
+	 double iy=0;
+	 for(size_t i=0;i<n;i++){
+	    iy = par[0] + par[1]*xa[i] + par[2]*pow(xa[i],3.) + par[3]*pow(xa[i],5.);
+	    gsl_vector_set(f,i,iy-ya[i]);
+	 }
+	 return GSL_SUCCESS;
+      }
+      //______________________________________________________________________________
+      int poly5_df(const gsl_vector *x,void *data,gsl_matrix *J){
+	 // Jacobian for fit function f(x) = p0 + p1*x + p2*x^3 + p3*x^5
+	 // data set 
+	 size_t n   = ( (data_t *)data )->n;
+	 double *xa = ( (data_t *)data )->x;
+	 // compute jacobian for each data point  
+	 double arg_i0=0,arg_i1=0,arg_i2=0,arg_i3=0;
+	 for(size_t i=0;i<n;i++){
+	    arg_i0 = 1.0;
+	    arg_i1 = pow(xa[i],1.);
+	    arg_i2 = pow(xa[i],3.);
+	    arg_i3 = pow(xa[i],5.);
+	    gsl_matrix_set(J,i,0,arg_i0);
+	    gsl_matrix_set(J,i,1,arg_i1);
+	    gsl_matrix_set(J,i,2,arg_i2);
+	    gsl_matrix_set(J,i,3,arg_i3);
+	 }
+	 return GSL_SUCCESS;
+      }
+      //______________________________________________________________________________
+      int poly7(const gsl_vector *x,void *data,gsl_vector *f){
+	 // fit function f(x) = p0 + p1*x + p2*x^3 + p3*x^5 + p4*x^7
+	 // data set 
+	 size_t n   = ( (data_t *)data )->n;
+	 double *xa = ( (data_t *)data )->x;
+	 double *ya = ( (data_t *)data )->y;
+	 // fit parameters 
+	 const int npar = 5;
+	 double par[npar];
+	 for(int i=0;i<npar;i++){
+	    par[i] = gsl_vector_get(x,i);
+	 }
+	 // compute chi^2 function 
+	 double iy=0;
+	 for(size_t i=0;i<n;i++){
+	    iy = par[0] + par[1]*xa[i] + par[2]*pow(xa[i],3.) + par[3]*pow(xa[i],5.) + par[4]*pow(xa[i],7.);
+	    gsl_vector_set(f,i,iy-ya[i]);
+	 }
+	 return GSL_SUCCESS;
+      }
+      //______________________________________________________________________________
+      int poly7_df(const gsl_vector *x,void *data,gsl_matrix *J){
+	 // Jacobian for fit function f(x) = p0 + p1*x + p2*x^3 + p3*x^5 + p4*x^7
+	 // data set 
+	 size_t n   = ( (data_t *)data )->n;
+	 double *xa = ( (data_t *)data )->x;
+	 // compute jacobian for each data point  
+	 double arg_i0=0,arg_i1=0,arg_i2=0,arg_i3=0,arg_i4=0;
+	 for(size_t i=0;i<n;i++){
+	    arg_i0 = 1.0;
+	    arg_i1 = pow(xa[i],1.);
+	    arg_i2 = pow(xa[i],3.);
+	    arg_i3 = pow(xa[i],5.);
+	    arg_i4 = pow(xa[i],7.);
+	    gsl_matrix_set(J,i,0,arg_i0);
+	    gsl_matrix_set(J,i,1,arg_i1);
+	    gsl_matrix_set(J,i,2,arg_i2);
+	    gsl_matrix_set(J,i,3,arg_i3);
+	    gsl_matrix_set(J,i,4,arg_i4);
+	 }
+	 return GSL_SUCCESS;
+      }
+      //______________________________________________________________________________
+      int AdjustTimeWindow(NMRPulse *aPulse,double &tStart,double &tStop){
+	 // adjust the start and stop times based on zero crossings 
+	 double prod=0,t0=0;
+	 double v_curr=0,v_prev=aPulse->GetVoltage(0);
+	 double t_curr=0,t_prev=aPulse->GetTime(0);
+	 const int N = aPulse->GetNumPoints();
+	 std::vector<double> tc;
+	 // rudimentary zero crossing to find all crossings 
+	 for(int i=1;i<N;i++){
+	    t_curr = aPulse->GetTime(i);
+	    v_curr = aPulse->GetVoltage(i);
+	    prod   = v_curr*v_prev;
+	    if(prod>0){
+	       // no crossing 
+	    }else{
+	       // found a crossing.  do linear interpolation to find the time 
+	       t0 = LinearInterpolationForX(0.,t_prev,v_prev,t_curr,v_curr);
+	       tc.push_back(t0);
+	    }
+	    // set up for next event 
+	    t_prev = t_curr;
+	    v_prev = v_curr;
+	 }
+
+	 // now adjust our start and stop times 
+	 const int M = tc.size();
+	 if(M==0) return 1;
+
+	 // window cuts around our start and stop times
+	 double delta=50E-6; 
+	 double start[2] = {tStart-delta,tStart+delta}; 
+	 double stop[2]  = {tStop-delta ,tStop+delta}; 
+
+	 // define start and stop times based on zero crossings 
+	 for(int i=0;i<M;i++){
+	    if( (tc[i]>start[0])&&(tc[i]<start[1]) ){
+	       tStart = tc[i];
+	    }
+	    if( (tc[i]>stop[0])&&(tc[i]<stop[1]) ){
+	       tStop  = tc[i];
+	    }
+	 }
+	 return 0;
+      }
+      //______________________________________________________________________________
    } //::Utility 
 } //::UMass

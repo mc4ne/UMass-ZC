@@ -47,8 +47,15 @@ file(GLOB SOURCES ${PROJECT_SOURCE_DIR}/src/*.cc)
 file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.hh)
 
 #----------------------------------------------------------------------------
+# link against gsl 
+set(GSL_LIB "gsl")
+include_directories($ENV{GSLSYS}/include)
+link_directories($ENV{GSLSYS}/lib)
+
+#----------------------------------------------------------------------------
 # Generate the shared library from sources 
 add_library (${LIB_NAME} SHARED ${SOURCES})
+target_link_libraries(${LIB_NAME} ${GSL_LIB})
 
 #----------------------------------------------------------------------------
 # Install items 

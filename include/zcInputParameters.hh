@@ -21,14 +21,16 @@ namespace UMass {
       bool useLeastSquares;               // use a least squares fit to find the crossing 
       bool useIntegerCycles;              // use an integer number of cycles when computing the frequency 
       bool useT2Time;                     // use T2 time in getting the frequency 
-      bool useBaselineCorrection;         // use baseline correction on the FID  
+      bool useBaselineCorrection;         // use baseline correction on the FID 
+      bool useNonLinearLSQ;               // nose non-linear least squares fit to get frequency from phase fitting  
 
       zcInputParameters(double sf=0,double ef=0,double t_min=0,double t_max=0,double t_thr=0,
 	                int dev=0,int off_ord=0,int v=0,
-	                bool db=false,bool tr=false,bool mid=false,bool lin=false,bool lsq=false,bool ic=false,bool t2=false,bool bl=false):
+	                bool db=false,bool tr=false,bool mid=false,bool lin=false,bool lsq=false,
+                        bool ic=false,bool t2=false,bool bl=false,bool nllsq=false):
 	 sampleFrequency(sf),expectedFrequency(ef),minTime(t_min),maxTime(t_max),
 	 timeThreshold(t_thr),device(dev),offsetOrder(off_ord),verbosity(v),debug(db),useTimeRange(tr),useMidpoint(mid),useLinearInterp(lin),
-	 useLeastSquares(lsq),useIntegerCycles(ic),useT2Time(t2),useBaselineCorrection(bl) {}
+	 useLeastSquares(lsq),useIntegerCycles(ic),useT2Time(t2),useBaselineCorrection(bl),useNonLinearLSQ(nllsq) {}
 
    } ;
 

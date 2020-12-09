@@ -68,6 +68,7 @@ namespace UMass {
 	 int GetNumZeroCrossingsLeastSquares()     const {return fZC[2];} 
 
 	 double GetFrequencyFromPhaseFit();                      // compute the frequency fitting the zero crossings 
+	 double GetFrequencyFromPhaseFit_nllsq();                // compute the frequency fitting the zero crossings (NL-LSQ) 
 
 	 double GetNumCyclesMidpoint()             const {return fNC[0];} 
 	 double GetNumCyclesLinearInterp()         const {return fNC[1];} 

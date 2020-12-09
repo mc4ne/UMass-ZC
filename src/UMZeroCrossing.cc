@@ -195,7 +195,7 @@ namespace UMass {
       char msg[200];  
 
       if(fParameters.useT2Time){
-	 fParameters.maxTime = Utility::GetT2Time(fPulse);
+	 fParameters.maxTime = Utility::GetT2Time_old(fPulse);
 	 if(fParameters.verbosity>=2 || fParameters.debug==true){
 	    sprintf(msg,"[ZeroCrossing::Analyze]: Using the T2 time = %.3lf ms",fParameters.maxTime/1E-3); 
 	    std::cout << msg << std::endl;
@@ -405,9 +405,31 @@ namespace UMass {
    }
    //______________________________________________________________________________
    double ZeroCrossing::GetFrequencyFromPhaseFit(){
-      // FIXME: Update to use the version in DSP! 
+      // linear least squares 
       double freq=0,intercept=0,r=0;
       UMass::Utility::LeastSquaresFitting(fNZC,fTcross,fNumCycles,intercept,freq,r); 
+      return freq;
+   }
+   //______________________________________________________________________________
+   double ZeroCrossing::GetFrequencyFromPhaseFit_nllsq(){
+      // nonlinear least squares
+      const int npar = 5; 
+      std::vector<double> par,parErr;
+      for(int i=0;i<npar;i++){
+	 par.push_back(1); 
+	 parErr.push_back(0); 
+      }
+      const int NPTS = fNZC;
+      std::vector<double> x,y,dy;
+      for(int i=0;i<NPTS;i++){
+	 x.push_back( fTcross[i] );
+	 y.push_back( fNumCycles[i] );  
+	 dy.push_back(0);               // FIXME: Accurate error estimate?  
+      }
+      double freq=0; // the frequency is the p1 term 
+      int rc = UMass::Utility::NonLinearLeastSquaresFitting(x,y,dy,UMass::Utility::poly7,UMass::Utility::poly7_df,par,parErr,npar,0);
+      if(rc!=0) freq = -1; 
+      freq = par[1]; // the frequency is the p1 term 
       return freq;
    }
 
