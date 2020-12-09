@@ -19,6 +19,6 @@ To be able to use the library in your application, you have to set up your envir
 variables to successfully link this library to your application.  In your `bashrc`, define: 
 
 ```
-export UMZCSYS=$HOME/work/JLab/UMZC/install
+export UMZCSYS=/path/to/UMass-ZC-install
 export LD_LIBRARY_PATH=$UMZCSYS/lib:$LD_LIBRARY_PATH
 ```
