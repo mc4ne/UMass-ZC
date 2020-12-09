@@ -2,7 +2,10 @@
 A C++ library containing a zero crossing counting algorithm to extract the frequency of an input NMR signal.
 
 # System Requirements 
-Your system needs to have CMake version 3.9 or higher and C++11 or higher.   
+Your system needs to have the following: 
+- C++11 or higher   
+- CMake version 3.9 or higher
+- GSL installed 
 
 # Configuration and Building   
 Create a `build` and `install` directory in parallel to the main source directory.  Then change to 
