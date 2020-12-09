@@ -193,13 +193,13 @@ namespace UMass {
       }
 
       // if we're using the T2 time as the endpoint, calculate it here
-      double t2Time=0;
+      // double t2Time = Utility::GetT2Time_old(fPulse);
+      double t2Time = Utility::GetT2Time_v3a(0,fPulse,1); // start from index zero, last parameter is verbosity
+      fPulse->SetT2Time(t2Time);
+
       char msg[200];  
 
       if(fParameters.useT2Time){
-	 // t2Time = Utility::GetT2Time_old(fPulse);
-	 t2Time = Utility::GetT2Time_v3a(0,fPulse,1); // start from index zero, last parameter is verbosity
-	 fPulse->SetT2Time(t2Time);
 	 fParameters.maxTime = t2Time; 
 	 if(fParameters.verbosity>=2 || fParameters.debug==true){
 	    sprintf(msg,"[ZeroCrossing::Analyze]: Using the T2 time = %.3lf ms",fParameters.maxTime/1E-3); 
