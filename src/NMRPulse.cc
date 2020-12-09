@@ -7,7 +7,8 @@ namespace UMass {
       fNumPoints        = NPTS; 
       fTimeStamp        = 0.;  
       fAmpl             = 0.; 
-      fNoiseRMS         = 0.; 
+      fNoiseRMS         = 0.;
+      fT2Time           = 0.; 
       fVerbosity        = 0; 
       const int N       = NPTS;
       fTime             = new double[N]; 
@@ -24,6 +25,7 @@ namespace UMass {
       fTimeStamp        = aPulse.GetTimeStamp(); 
       fAmpl             = aPulse.GetAmplitude(); 
       fNoiseRMS         = aPulse.GetNoiseRMS(); 
+      fT2Time           = aPulse.GetT2Time(); 
       // deep copy 
       const int N       = fNumPoints;
       if(N>0){
@@ -46,6 +48,7 @@ namespace UMass {
       fTimeStamp        = aPulse->GetTimeStamp(); 
       fAmpl             = aPulse->GetAmplitude(); 
       fNoiseRMS         = aPulse->GetNoiseRMS(); 
+      fT2Time           = aPulse->GetT2Time(); 
       // deep copy 
       const int N       = fNumPoints; 
       if(N>0){   
@@ -78,6 +81,7 @@ namespace UMass {
       fTimeStamp        = aPulse.GetTimeStamp(); 
       fAmpl             = aPulse.GetAmplitude(); 
       fNoiseRMS         = aPulse.GetNoiseRMS(); 
+      fT2Time           = aPulse.GetT2Time(); 
       // deep copy 
       const int N       = fNumPoints;
       if(N>0){  
@@ -112,6 +116,7 @@ namespace UMass {
       fTimeStamp     = aPulse->GetTimeStamp(); 
       fAmpl          = aPulse->GetAmplitude(); 
       fNoiseRMS      = aPulse->GetNoiseRMS(); 
+      fT2Time        = aPulse->GetT2Time(); 
       // deep copy 
       const int N    = fNumPoints;
       if(N>0){   
@@ -157,7 +162,8 @@ namespace UMass {
    void NMRPulse::ClearData(){
       fTimeStamp        = 0.;  
       fAmpl             = 0.; 
-      fNoiseRMS         = 0.; 
+      fNoiseRMS         = 0.;
+      fT2Time           = 0.; 
       for(int i=0;i<fNumPoints;i++){
 	 fTime[i]       = 0;
 	 fVoltage[i]    = 0;
@@ -189,14 +195,14 @@ namespace UMass {
    //______________________________________________________________________________
    void NMRPulse::Print(){
       printf("================ NMR Pulse ================ \n");
-      printf("PulseNumber      = %d      \n",fPulseNumber);
-      printf("NumPoints        = %d      \n",fNumPoints  );
-      printf("TimeStamp        = %llu    \n",fTimeStamp  );
-      printf("Amplitude        = %.7lf V \n",fAmpl       );
-      printf("Noise RMS        = %.7lf V \n",fNoiseRMS   );
+      printf("PulseNumber      = %d      \n" ,fPulseNumber);
+      printf("NumPoints        = %d      \n" ,fNumPoints  );
+      printf("TimeStamp        = %llu    \n" ,fTimeStamp  );
+      printf("Amplitude        = %.7lf V \n" ,fAmpl       );
+      printf("Noise RMS        = %.7lf V \n" ,fNoiseRMS   );
+      printf("T2 Time          = %.3lf ms \n",fT2Time/1E-3);
       // for(int i=0;i<fNumPoints;i++){
       //    printf("time = %.7f s \t voltage = %.7f V \t voltage err = %.7f V \n",fTime[i],fVoltage[i],fVoltageErr[i]); 
       // }
    }
-
 } //::UMass

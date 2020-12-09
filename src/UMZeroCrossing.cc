@@ -62,20 +62,21 @@ namespace UMass {
    }
    //______________________________________________________________________________
    void ZeroCrossing::SetParameters(zcInputParameters par){
-      fParameters.expectedFrequency     = par.expectedFrequency;
-      fParameters.sampleFrequency       = par.sampleFrequency;
-      fParameters.minTime               = par.minTime;
-      fParameters.maxTime               = par.maxTime; 
-      fParameters.device                = par.device; 
-      fParameters.verbosity             = par.verbosity; 
-      fParameters.debug                 = par.debug;  
-      fParameters.useMidpoint           = par.useMidpoint; 
-      fParameters.useLinearInterp       = par.useLinearInterp;
-      fParameters.useLeastSquares       = par.useLeastSquares; 
-      fParameters.useTimeRange          = par.useTimeRange;   
-      fParameters.useIntegerCycles      = par.useIntegerCycles; 
-      fParameters.useT2Time             = par.useT2Time; 
-      fParameters.useBaselineCorrection = par.useBaselineCorrection; 
+      // fParameters.expectedFrequency     = par.expectedFrequency;
+      // fParameters.sampleFrequency       = par.sampleFrequency;
+      // fParameters.minTime               = par.minTime;
+      // fParameters.maxTime               = par.maxTime; 
+      // fParameters.device                = par.device; 
+      // fParameters.verbosity             = par.verbosity; 
+      // fParameters.debug                 = par.debug;  
+      // fParameters.useMidpoint           = par.useMidpoint; 
+      // fParameters.useLinearInterp       = par.useLinearInterp;
+      // fParameters.useLeastSquares       = par.useLeastSquares; 
+      // fParameters.useTimeRange          = par.useTimeRange;   
+      // fParameters.useIntegerCycles      = par.useIntegerCycles; 
+      // fParameters.useT2Time             = par.useT2Time; 
+      // fParameters.useBaselineCorrection = par.useBaselineCorrection; 
+      fParameters = par; 
       UpdateParameters(); 
       // update the baseline values as well
       fBaseline->SetParameters(par);  
@@ -192,10 +193,14 @@ namespace UMass {
       }
 
       // if we're using the T2 time as the endpoint, calculate it here
+      double t2Time=0;
       char msg[200];  
 
       if(fParameters.useT2Time){
-	 fParameters.maxTime = Utility::GetT2Time_old(fPulse);
+	 // t2Time = Utility::GetT2Time_old(fPulse);
+	 t2Time = Utility::GetT2Time_v3a(0,fPulse,1); // start from index zero, last parameter is verbosity
+	 fPulse->SetT2Time(t2Time);
+	 fParameters.maxTime = t2Time; 
 	 if(fParameters.verbosity>=2 || fParameters.debug==true){
 	    sprintf(msg,"[ZeroCrossing::Analyze]: Using the T2 time = %.3lf ms",fParameters.maxTime/1E-3); 
 	    std::cout << msg << std::endl;
@@ -271,6 +276,9 @@ namespace UMass {
 
       InitAnaArrays(); 
 
+      bool useNLLSQ = fParameters.useNonLinearLSQ; 
+      int fitFunc   = fParameters.phaseFitFunc; 
+
       // int PulseNumber = aPulse->GetPulseNumber(); 
       int rc_fr=0,rc=0; 
       int zc_mid=0,zc_lin=0,zc_lsq=0;
@@ -281,7 +289,11 @@ namespace UMass {
       if(fParameters.useMidpoint){
 	 CountZeroCrossings(UMass::Utility::kMidpoint,aPulse);
 	 rc_fr       = CalculateFrequencies(zc_mid,freq_mid);
-	 freq_mid_ph = GetFrequencyFromPhaseFit(); 
+         if(useNLLSQ){
+	    freq_mid_ph = GetFrequencyFromPhaseFit_nllsq(fitFunc);
+         }else{
+	    freq_mid_ph = GetFrequencyFromPhaseFit();
+         } 
 	 nc_mid      = ( (double)zc_mid - 1.)/2.; 
 	 // PrintVectorData(1,PulseNumber); 
 	 Reset(); 
@@ -291,6 +303,11 @@ namespace UMass {
 	 CountZeroCrossings(UMass::Utility::kLinearInterpolation,aPulse);
 	 rc_fr       = CalculateFrequencies(zc_lin,freq_lin);
 	 freq_lin_ph = GetFrequencyFromPhaseFit(); 
+         if(useNLLSQ){
+	    freq_lin_ph = GetFrequencyFromPhaseFit_nllsq(fitFunc);
+         }else{
+	    freq_lin_ph = GetFrequencyFromPhaseFit();
+         } 
 	 nc_lin      = ( (double)zc_lin - 1.)/2.; 
 	 // PrintVectorData(2,PulseNumber); 
 	 Reset(); 
@@ -299,7 +316,11 @@ namespace UMass {
       if(fParameters.useLeastSquares){
 	 CountZeroCrossings(UMass::Utility::kLeastSquares,aPulse);
 	 rc_fr       = CalculateFrequencies(zc_lsq,freq_lsq);
-	 freq_lsq_ph = GetFrequencyFromPhaseFit(); 
+         if(useNLLSQ){
+	    freq_lsq_ph = GetFrequencyFromPhaseFit_nllsq(fitFunc);
+         }else{
+	    freq_lsq_ph = GetFrequencyFromPhaseFit();
+         } 
 	 nc_lsq      = ( (double)zc_lsq - 1.)/2.; 
 	 // PrintVectorData(3,PulseNumber); 
 	 Reset(); 
@@ -334,7 +355,13 @@ namespace UMass {
    void ZeroCrossing::CountZeroCrossings(int method,NMRPulse *aPulse){
       fNZC = Utility::CountZeroCrossings(fParameters.verbosity,method,
                                          fNPTS,fStep,fParameters.useTimeRange,fParameters.minTime,fParameters.maxTime,
+					 fParameters.useT2Time,
 	                                 aPulse,fX,fY,fEY,fNCrossing,fCrossingIndex,fTcross,fVcross);
+
+      if(fParameters.debug){
+	 Utility::PrintArraysToFile("zero-crossings.csv",fNZC,fTcross,fVcross,fNCrossing); 
+      }
+
    }
    //______________________________________________________________________________
    int ZeroCrossing::CalculateFrequencies(int &TrueNumCrossings,double &FreqFullRange){
@@ -407,15 +434,23 @@ namespace UMass {
    double ZeroCrossing::GetFrequencyFromPhaseFit(){
       // linear least squares 
       double freq=0,intercept=0,r=0;
-      UMass::Utility::LeastSquaresFitting(fNZC,fTcross,fNumCycles,intercept,freq,r); 
+      Utility::LeastSquaresFitting(fNZC,fTcross,fNumCycles,intercept,freq,r); 
       return freq;
    }
    //______________________________________________________________________________
-   double ZeroCrossing::GetFrequencyFromPhaseFit_nllsq(){
+   double ZeroCrossing::GetFrequencyFromPhaseFit_nllsq(const int fitFunc){
       // nonlinear least squares
-      const int npar = 5; 
+      int np=0;
+      if(fitFunc==1) np = 2; 
+      if(fitFunc==3) np = 3; 
+      if(fitFunc==5) np = 4; 
+      if(fitFunc==7) np = 5; 
+      if(fitFunc==9) np = 6; 
+
+      const int NPAR = np; 
+ 
       std::vector<double> par,parErr;
-      for(int i=0;i<npar;i++){
+      for(int i=0;i<NPAR;i++){
 	 par.push_back(1); 
 	 parErr.push_back(0); 
       }
@@ -427,10 +462,22 @@ namespace UMass {
 	 dy.push_back(0);               // FIXME: Accurate error estimate?  
       }
       double freq=0; // the frequency is the p1 term 
-      int rc = UMass::Utility::NonLinearLeastSquaresFitting(x,y,dy,UMass::Utility::poly7,UMass::Utility::poly7_df,par,parErr,npar,0);
+      int rc=-1; 
+      if(fitFunc==1) rc = Utility::NonLinearLeastSquaresFitting(x,y,dy,Utility::poly1,Utility::poly1_df,par,parErr,NPAR,0);
+      if(fitFunc==3) rc = Utility::NonLinearLeastSquaresFitting(x,y,dy,Utility::poly3,Utility::poly3_df,par,parErr,NPAR,0);
+      if(fitFunc==5) rc = Utility::NonLinearLeastSquaresFitting(x,y,dy,Utility::poly5,Utility::poly5_df,par,parErr,NPAR,0);
+      if(fitFunc==7) rc = Utility::NonLinearLeastSquaresFitting(x,y,dy,Utility::poly7,Utility::poly7_df,par,parErr,NPAR,0);
+      if(fitFunc==9) rc = Utility::NonLinearLeastSquaresFitting(x,y,dy,Utility::poly9,Utility::poly9_df,par,parErr,NPAR,0);
       if(rc!=0) freq = -1; 
       freq = par[1]; // the frequency is the p1 term 
+
+      // print to file 
+      char fileName[200];
+      if(fParameters.debug){
+	 sprintf(fileName,"fit-func-%d_phase-fit-parameters.csv",fitFunc); 
+	 rc = Utility::PrintVectorsToFile(fileName,par,parErr);
+      } 
+
       return freq;
    }
-
 } //::UMass

@@ -14,6 +14,7 @@ namespace UMass {
       int device;                         // set the device type (Utility::kPlungingProbe, Utility::kTrolley, Utility::kFixedProbe) 
       int offsetOrder;                    // what order offset correction to apply? (0 up to 5)  
       int verbosity;                      // how much info to print to screen (higher number = more text) 
+      int phaseFitFunc;                   // phase fit function; 1 = pol1, 3 = pol3, 5 = pol5, 7 = pol7, 9 = pol9 (odd poly)   
       bool debug;                         // turn on debug mode
       bool useTimeRange;                  // use the time range 
       bool useMidpoint;                   // use the midpoint method to find the crossing  

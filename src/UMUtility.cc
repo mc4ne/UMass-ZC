@@ -3,6 +3,50 @@
 namespace UMass { 
    namespace Utility {
       //______________________________________________________________________________
+      int PrintMessage(const char *funcName,const char *msg,const int lineNo){
+	 if(lineNo>=0){
+	    std::cout << "[" << funcName << "]: line " << lineNo << ": " << msg << std::endl;
+	 }else{
+	    std::cout << "[" << funcName << "]: " << msg << std::endl;
+	 }
+	 return 0;
+      }
+      //______________________________________________________________________________
+      int PrintArraysToFile(const char *outpath,const int N,double *x,double *y,int *z){
+	 char outStr[200]; 
+	 std::ofstream outfile; 
+	 outfile.open(outpath);
+	 if( outfile.fail() ){
+	    std::cout << "[UMass::Utility::PrintVectorsToFile]: Cannot open the file: " << outpath << std::endl;
+	    return 1;
+	 }else{
+	    for(int i=0;i<N;i++){
+	       sprintf(outStr,"%.10E,%.10E,%d",x[i],y[i],z[i]);
+	       outfile << outStr << std::endl;
+	    }
+	    outfile.close();
+	 }
+	 return 0;
+      }
+      //______________________________________________________________________________
+      int PrintVectorsToFile(const char *outpath,std::vector<double> x,std::vector<double> y){
+	 const int N = x.size();
+	 char outStr[200]; 
+	 std::ofstream outfile; 
+	 outfile.open(outpath);
+	 if( outfile.fail() ){
+	    std::cout << "[UMass::Utility::PrintVectorsToFile]: Cannot open the file: " << outpath << std::endl;
+	    return 1;
+	 }else{
+	    for(int i=0;i<N;i++){
+	       sprintf(outStr,"%.10E,%.10E",x[i],y[i]);
+	       outfile << outStr << std::endl;
+	    }
+	    outfile.close();
+	 }
+	 return 0;
+      }
+      //______________________________________________________________________________
       int PrintSignalToFile(const char *outpath,NMRPulse *aPulse){
 	 const int N = aPulse->GetNumPoints();
 	 char outStr[500];
@@ -78,7 +122,7 @@ namespace UMass {
 	 return v;
       }
       //______________________________________________________________________________
-      double GetT2Time(int startIndex,NMRPulse *aPulse){
+      double GetT2Time_v2(int startIndex,NMRPulse *aPulse){
 
 	 std::vector<double> tm,vm;
 	 int rc = FindLocalMaxima(startIndex,aPulse,tm,vm);   // first find local maxima 
@@ -100,6 +144,13 @@ namespace UMass {
 	 // std::cout << "             lo = " << v_lo << " hi = " << v_hi << std::endl;
 
 	 const int N = tm.size();
+	 if(N==0){
+	    std::cout << "[UMass::Utility::GetT2Time]: ERROR! No data for T2 time algorithm!  Returning -1" << std::endl;
+	    std::cout << "[UMass::Utility::GetT2Time]: Target voltage for T2 time is " << vmax/e_const << std::endl;
+	    std::cout << "                      window: lo = " << v_lo << " hi = " << v_hi << std::endl;
+	    return -1;
+	 }
+
 	 std::vector<double> tt,vv;
 	 for(int i=0;i<N;i++){
 	    if( fabs(vm[i])>v_lo && fabs(vm[i])<v_hi ){
@@ -111,8 +162,13 @@ namespace UMass {
 	 const int M = tt.size();
 	 // std::cout << M << " possible T2 times " << std::endl;
 	 // for(int i=0;i<M;i++) std::cout << Form("%.5lf, %.5lf",tt[i],vv[i]) << std::endl;
+	 if(M==0){
+	    std::cout << "[UMass::Utility::GetT2Time]: ERROR! No candidates for T2 times!  Returning -1" << std::endl;
+	    std::cout << "[UMass::Utility::GetT2Time]: Target voltage for T2 time is " << vmax/e_const << std::endl;
+	    std::cout << "                             window: lo = " << v_lo << " hi = " << v_hi << std::endl;
+	    return -1;
+	 }
 
-	 if(M==0) return -1;
 	 bool isBreak=false;
 
 	 double vdiff=0,vdiff_pct=0,tdiff=0;
@@ -142,6 +198,130 @@ namespace UMass {
 
 	 return t2_time;
       } 
+      //______________________________________________________________________________
+      double GetT2Time_v3(int start,NMRPulse *aPulse){
+	 // find the T2 time of the signal
+	 char msg[200]; 
+	 // find max amplitude
+	 double vmax=-300,v=0,t=0;
+	 const int N = aPulse->GetNumPoints();
+	 for(int i=start;i<N;i++){
+	    v = aPulse->GetVoltage(i); 
+	    if(vmax<v) vmax = v;
+	 }
+	 // find T2 ampl 
+	 double e_const = exp(1);
+	 double v_tgt   = vmax/e_const;
+	 double v_lo    = v_tgt - 1E-3;
+	 double v_hi    = v_tgt + 1E-3;
+	 sprintf(msg,"Target voltage (in mV) is %.3lf < v_tgt = %.3lf < %.3lf",v_lo/1E-3,v_tgt/1E-3,v_hi/1E-3); 
+	 // PrintMessage("UMass::Utility::GetT2Time_v3",msg);
+
+	 // now filter to get times and amplitudes close to the target 
+	 std::vector<double> tt,vv;
+	 for(int i=0;i<N;i++){
+	    t = aPulse->GetTime(i); 
+	    v = aPulse->GetVoltage(i); 
+	    if(v>0){
+	       if( v>v_lo && v<v_hi ){
+		  tt.push_back(t);
+		  vv.push_back(v);
+	       }
+	    }
+	 }
+
+	 const int NN = tt.size();
+	 if(NN==0){
+	    std::cout << "[GetT2Time_v3]: No T2 time candidates!" << std::endl;
+	    return -1;
+	 }else{
+	    // std::cout << "[GetT2Time_v3]: Found " << NN << " T2 time candidates" << std::endl;
+	    // for(int i=0;i<NN;i++) std::cout << Form("t = %.7lf ms, v = %.3lf mV",tt[i]/1E-3,vv[i]/1E-3) << std::endl;
+	 }
+
+	 // binary search to find the time we want 
+	 int lo=0,hi=0;
+	 Algorithm::BinarySearch<double>(vv,v_tgt,lo,hi);
+	 double t2_time=0;
+	 double vdiff = fabs(vv[hi]-vv[lo]);
+	 if( vdiff<0.5E-3 ){
+	    // very small change in voltage; just take average of times  
+	    t2_time = 0.5*(tt[lo]+tt[hi]);
+	 }else{
+	    t2_time = LinearInterpolationForX(v_tgt,tt[lo],vv[lo],tt[hi],vv[hi]); // linear interpolation on the bounds  
+	 }
+	 // std::cout << Form("t[%d] = %.3lf ms, v[%d] = %.3lf mV",lo,tt[lo]/1E-3,lo,vv[lo]/1E-3) << std::endl;
+	 // std::cout << Form("t[%d] = %.3lf ms, v[%d] = %.3lf mV",hi,tt[hi]/1E-3,hi,vv[hi]/1E-3) << std::endl;
+
+	 sprintf(msg,"The T2 time is: %.3lf ms",t2_time/1E-3);
+	 PrintMessage("UMass::Utility::GetT2Time_v3",msg); 
+
+	 return t2_time;
+      }
+      //______________________________________________________________________________
+      double GetT2Time_v3a(int start,NMRPulse *aPulse,int verbosity){
+	 // improved version of the GetT2Time_v3 method 
+	 // find the T2 time of the signal
+	 char msg[200]; 
+	 // find max amplitude
+	 double vmax=-300,v=0,t=0;
+	 const int N = aPulse->GetNumPoints();
+	 for(int i=start;i<N;i++){
+	    v = aPulse->GetVoltage(i); 
+	    if(vmax<v) vmax = v;
+	 }
+	 // find T2 ampl 
+	 double e_const = exp(1);
+	 double v_tgt   = vmax/e_const;
+	 double v_lo    = v_tgt - 1E-3;
+	 double v_hi    = v_tgt + 1E-3;
+	 sprintf(msg,"Target voltage (in mV) is %.3lf < v_tgt = %.3lf < %.3lf",v_lo/1E-3,v_tgt/1E-3,v_hi/1E-3); 
+	 // PrintMessage("UMass::Utility::GetT2Time_v3a",msg); 
+
+	 // now filter to get times and amplitudes close to the target 
+	 std::vector<double> TT,VV;
+	 for(int i=0;i<N;i++){
+	    t = aPulse->GetTime(i); 
+	    v = aPulse->GetVoltage(i); 
+	    if(v>0){
+	       if( v>v_lo && v<v_hi ){
+		  TT.push_back(t);
+		  VV.push_back(v);
+	       }
+	    }
+	 }
+
+	 int NN = TT.size();
+	 // now determine if the candidates are within 1 ms of their neighbors
+	 double arg=0;
+	 double t_last = TT[0];
+	 std::vector<double> tt,vv;
+	 NN = TT.size();
+	 for(int i=1;i<NN;i++){
+	    arg = TT[i] - t_last;
+	    if(fabs(arg)<1E-3){
+	       tt.push_back(TT[i]);
+	       vv.push_back(VV[i]);
+	    }
+	    t_last = TT[i];
+	 }
+
+	 NN = tt.size(); 
+	 if(NN==0){
+	    std::cout << "[UMass::Utility::GetT2Time_v3a]: No T2 time candidates!" << std::endl;
+	    return -1;
+	 }else{
+	    // std::cout << "[UMass::Utility::GetT2Time_v3a]: Found " << NN << " T2 time candidates" << std::endl;
+	    // for(int i=0;i<NN;i++) std::cout << Form("t = %.7lf ms, v = %.3lf mV",tt[i]/1E-3,vv[i]/1E-3) << std::endl;
+	 }
+	 double t2_time = tt[NN-1];
+
+	 sprintf(msg,"The T2 time is: %.3lf ms",t2_time/1E-3);
+	 if(verbosity>0) PrintMessage("UMass::Utility::GetT2Time_v3a",msg); 
+
+	 return t2_time;
+
+      }
       //______________________________________________________________________________
       double GetT2Time_old(NMRPulse *aPulse){
 	 // find the T2 time of the signal
@@ -466,7 +646,7 @@ namespace UMass {
       }
       //______________________________________________________________________________
       int CountZeroCrossings(int verbosity,int method,int NPTS,int step,
-	    bool UseTimeRange,double tMin,double tMax,
+	    bool UseTimeRange,double tMin,double tMax,bool UseT2Time,
 	    NMRPulse *aPulse,
 	    double *X,double *Y,double *EY, 
 	    int *NCrossing,int *CrossingIndex,double *tCross,double *vCross){
@@ -488,11 +668,33 @@ namespace UMass {
 	 double t0           = 0;
 	 // double elapsed_time = 0;  
 
+	 double tMax_orig = tMax; 
+
+	 // compute and use the T2 time if necessary. 
+	 // NOTE: this will replace the input endtime if the T2 boolean is true. 
+	 // int startIndex = (int)(10E+6*500E-6);  // for T2 time  
+	 if(UseT2Time){
+	    // tMin = 500E-6;   // start at 500 us 
+	    // tMax = GetT2Time(startIndex,aPulse);
+	    tMax = aPulse->GetT2Time(); 
+	    UseTimeRange = true; 
+	    if(verbosity>3){
+	       std::cout << "[UMass::Utility::CountZeroCrossings]: Using the T2 time for frequency extraction.  ";
+               std::cout << "T2 = " << tMax/1E-3 << " ms" << std::endl;
+	    }
+	 }
+
 	 double v_prod=0;
 	 double delta_v=0; 
 	 double v_current=0,v_next=0;
 	 double t_current=0,t_next=0;
 	 double v_current_err=0,v_next_err=0;
+
+	 if(tMax<0){
+	    tMax = tMax_orig; 
+	    std::cout << "[UMass::Utility::CountZeroCrossings]: WARNING: stop time window is UNPHYSICAL!";
+	    std::cout << "  Defaulting to original stop time = " << tMax/1E-3 << " ms" << std::endl;
+	 } 
 
 	 int i=0;  // index for NMRPulse data 
 	 do{
@@ -762,6 +964,43 @@ namespace UMass {
 	 // std::cerr << msg << std::endl;
       }
       //______________________________________________________________________________
+      int poly1(const gsl_vector *p,void *data,gsl_vector *f){
+	 // fit function f(x) = p0 + p1*x + p2*x^3 + p3*x^5 + p4*x^7
+	 // data set 
+	 size_t n   = ( (data_t *)data )->n;
+	 double *xa = ( (data_t *)data )->x;
+	 double *ya = ( (data_t *)data )->y;
+	 // fit parameters 
+	 const int npar = 2;
+	 double par[npar];
+	 for(int i=0;i<npar;i++){
+	    par[i] = gsl_vector_get(p,i);
+	 }
+	 // compute chi^2 function 
+	 double iy=0;
+	 for(size_t i=0;i<n;i++){
+	    iy = par[0] + par[1]*xa[i];
+	    gsl_vector_set(f,i,iy-ya[i]);
+	 }
+	 return GSL_SUCCESS;
+      }
+      //______________________________________________________________________________
+      int poly1_df(const gsl_vector *x,void *data,gsl_matrix *J){
+	 // Jacobian for fit function f(x) = p0 + p1*x + p2*x^3 + p3*x^5 + p4*x^7
+	 // data set 
+	 size_t n   = ( (data_t *)data )->n;
+	 double *xa = ( (data_t *)data )->x;
+	 // compute jacobian for each data point  
+	 double arg_i0=0,arg_i1=0;
+	 for(size_t i=0;i<n;i++){
+	    arg_i0 = 1.0;
+	    arg_i1 = pow(xa[i],1.);
+	    gsl_matrix_set(J,i,0,arg_i0);
+	    gsl_matrix_set(J,i,1,arg_i1);
+	 }
+	 return GSL_SUCCESS;
+      }
+      //______________________________________________________________________________
       int poly3(const gsl_vector *x,void *data,gsl_vector *f){
 	 // fit function f(x) = p0 + p1*x + p2*x^3
 	 // data set 
@@ -884,6 +1123,52 @@ namespace UMass {
 	 }
 	 return GSL_SUCCESS;
       }
+      //______________________________________________________________________________
+      int poly9(const gsl_vector *p,void *data,gsl_vector *f){
+	 // fit function f(x) = p0 + p1*x + p2*x^3 + p3*x^5 + p4*x^7
+	 // data set 
+	 size_t n   = ( (data_t *)data )->n;
+	 double *xa = ( (data_t *)data )->x;
+	 double *ya = ( (data_t *)data )->y;
+	 // fit parameters 
+	 const int npar = 6;
+	 double par[npar];
+	 for(int i=0;i<npar;i++){
+	    par[i] = gsl_vector_get(p,i);
+	 }
+	 // compute chi^2 function 
+	 double iy=0;
+	 for(size_t i=0;i<n;i++){
+	    iy = par[0] + par[1]*xa[i] + par[2]*pow(xa[i],3.) + par[3]*pow(xa[i],5.) + par[4]*pow(xa[i],7.) + par[5]*pow(xa[i],9.);
+	    gsl_vector_set(f,i,iy-ya[i]);
+	 }
+	 return GSL_SUCCESS;
+      }
+      //______________________________________________________________________________
+      int poly9_df(const gsl_vector *x,void *data,gsl_matrix *J){
+	 // Jacobian for fit function f(x) = p0 + p1*x + p2*x^3 + p3*x^5 + p4*x^7
+	 // data set 
+	 size_t n   = ( (data_t *)data )->n;
+	 double *xa = ( (data_t *)data )->x;
+	 // compute jacobian for each data point  
+	 double arg_i0=0,arg_i1=0,arg_i2=0,arg_i3=0,arg_i4=0,arg_i5=0;
+	 for(size_t i=0;i<n;i++){
+	    arg_i0 = 1.0;
+	    arg_i1 = pow(xa[i],1.);
+	    arg_i2 = pow(xa[i],3.);
+	    arg_i3 = pow(xa[i],5.);
+	    arg_i4 = pow(xa[i],7.);
+	    arg_i5 = pow(xa[i],9.);
+	    gsl_matrix_set(J,i,0,arg_i0);
+	    gsl_matrix_set(J,i,1,arg_i1);
+	    gsl_matrix_set(J,i,2,arg_i2);
+	    gsl_matrix_set(J,i,3,arg_i3);
+	    gsl_matrix_set(J,i,4,arg_i4);
+	    gsl_matrix_set(J,i,5,arg_i5);
+	 }
+	 return GSL_SUCCESS;
+      }
+
       //______________________________________________________________________________
       int AdjustTimeWindow(NMRPulse *aPulse,double &tStart,double &tStop){
 	 // adjust the start and stop times based on zero crossings 
