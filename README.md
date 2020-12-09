@@ -16,4 +16,8 @@ number of cores in your machine.
 
 # Configuring Your Environment
 To be able to use the library in your application, you have to set up your environment with specific 
-variables to successfully link this library to your application.  These will be defined soon.  
+variables to successfully link this library to your application.  In your `bashrc`, define: 
+
+```export UMZCSYS=$HOME/work/JLab/UMZC/install
+   export LD_LIBRARY_PATH=$UMZCSYS/lib:$LD_LIBRARY_PATH
+``` 
