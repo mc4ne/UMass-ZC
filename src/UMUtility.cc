@@ -13,11 +13,12 @@ namespace UMass {
       }
       //______________________________________________________________________________
       int PrintArraysToFile(const char *outpath,const int N,double *x,double *y,int *z){
-	 char outStr[200]; 
+	 char outStr[200],msg[200]; 
 	 std::ofstream outfile; 
 	 outfile.open(outpath);
 	 if( outfile.fail() ){
-	    std::cout << "[UMass::Utility::PrintVectorsToFile]: Cannot open the file: " << outpath << std::endl;
+	    sprintf(msg,"Cannot open the file: %s",outpath);
+	    PrintMessage("UMass::Utility::PrintArraysToFile",msg); 
 	    return 1;
 	 }else{
 	    for(int i=0;i<N;i++){
@@ -25,17 +26,20 @@ namespace UMass {
 	       outfile << outStr << std::endl;
 	    }
 	    outfile.close();
+	    sprintf(msg,"Data printed to the file: %s",outpath);
+	    PrintMessage("UMass::Utility::PrintArraysToFile",msg); 
 	 }
 	 return 0;
       }
       //______________________________________________________________________________
       int PrintVectorsToFile(const char *outpath,std::vector<double> x,std::vector<double> y){
 	 const int N = x.size();
-	 char outStr[200]; 
+	 char outStr[200],msg[200]; 
 	 std::ofstream outfile; 
 	 outfile.open(outpath);
 	 if( outfile.fail() ){
-	    std::cout << "[UMass::Utility::PrintVectorsToFile]: Cannot open the file: " << outpath << std::endl;
+	    sprintf(msg,"Cannot open the file: %s",outpath);
+	    PrintMessage("UMass::Utility::PrintVectorsToFile",msg); 
 	    return 1;
 	 }else{
 	    for(int i=0;i<N;i++){
@@ -43,25 +47,29 @@ namespace UMass {
 	       outfile << outStr << std::endl;
 	    }
 	    outfile.close();
+	    sprintf(msg,"Data printed to the file: %s",outpath);
+	    PrintMessage("UMass::Utility::PrintVectorsToFile",msg); 
 	 }
 	 return 0;
       }
       //______________________________________________________________________________
       int PrintSignalToFile(const char *outpath,NMRPulse *aPulse){
 	 const int N = aPulse->GetNumPoints();
-	 char outStr[500];
+	 char outStr[500],msg[200];
 	 std::ofstream outfile;
 	 outfile.open(outpath);
 	 if( outfile.fail() ){
-	    std::cout << "[Utility::PrintSignalToFile]: Cannot open the file: " << outpath << std::endl;
+	    sprintf(msg,"Cannot open the file: %s",outpath);
+	    PrintMessage("UMass::Utility::PrintSignalToFile",msg); 
 	    return 1;
 	 }else{
 	    for(int i=0;i<N;i++){
-	       sprintf(outStr,"%.3lf",aPulse->GetVoltage(i));
+	       sprintf(outStr,"%.10E,%.10E",aPulse->GetTime(i),aPulse->GetVoltage(i));
 	       outfile << outStr << std::endl;
 	    }
 	    outfile.close();
-	    std::cout << "[Utility::PrintSignalToFile]: The data has been written to the file: " << outpath << std::endl;
+	    sprintf(msg,"Data printed to the file: %s",outpath);
+	    PrintMessage("UMass::Utility::PrintSignalToFile",msg); 
 	 }
 	 return 0;
       }

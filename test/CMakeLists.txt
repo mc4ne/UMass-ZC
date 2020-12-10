@@ -56,9 +56,15 @@ include_directories($ENV{UMZCSYS}/include)
 link_directories($ENV{UMZCSYS}/lib)
 
 #----------------------------------------------------------------------------
+# link against gsl 
+set(GSL_LIB "gsl")
+include_directories($ENV{GSLSYS}/include)
+link_directories($ENV{GSLSYS}/lib)
+
+#----------------------------------------------------------------------------
 # Generate the executable 
 add_executable(${EXE_NAME} ${SOURCES} ${PROJECT_SOURCE_DIR}/${EXE_NAME}.cc)
-target_link_libraries(${EXE_NAME} ${UMZC_LIB})
+target_link_libraries(${EXE_NAME} ${UMZC_LIB} ${GSL_LIB})
 
 #----------------------------------------------------------------------------
 # Install items 

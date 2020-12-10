@@ -5,7 +5,7 @@ A C++ library containing a zero crossing counting algorithm to extract the frequ
 Your system needs to have the following: 
 - C++11 or higher   
 - CMake version 3.9 or higher
-- GSL installed 
+- GNU Scientific Library installed 
 
 # Configuration and Building   
 Create a `build` and `install` directory in parallel to the main source directory.  Then change to 
@@ -19,6 +19,6 @@ To be able to use the library in your application, you have to set up your envir
 variables to successfully link this library to your application.  In your `bashrc`, define: 
 
 ```
-export UMZCSYS=/path/to/UMass-ZC-install
+export UMZCSYS=/path/to/UMass-ZC/installation
 export LD_LIBRARY_PATH=$UMZCSYS/lib:$LD_LIBRARY_PATH
 ```
