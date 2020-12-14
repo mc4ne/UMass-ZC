@@ -365,7 +365,7 @@ namespace UMass {
       t_diff_abs_2+=0;
 
       // first calculation 
-      int nzc = Utility::CountZeroCrossings(fParameters.verbosity,type,NPTS,stepSize,UseRange,tMin,tMax,
+      int nzc = Utility::CountZeroCrossings(fParameters.verbosity,type,NPTS,stepSize,UseRange,tMin,tMax,fParameters.useT2Time,
 	    myPulse,fX,fY,fEY,fNCrossing,fCrossingIndex,fTcross,fVcross);
       double t_diff_old = GetTDiff(nzc,fTcross,t_even,t_odd);
       ClearNZCArrays();
@@ -391,7 +391,7 @@ namespace UMass {
 
       ApplyOffset(offset_new,myPulse);
 
-      nzc = Utility::CountZeroCrossings(fParameters.verbosity,type,NPTS,stepSize,UseRange,tMin,tMax,
+      nzc = Utility::CountZeroCrossings(fParameters.verbosity,type,NPTS,stepSize,UseRange,tMin,tMax,fParameters.useT2Time,
 	    myPulse,fX,fY,fEY,fNCrossing,fCrossingIndex,fTcross,fVcross);
       double t_diff_new = GetTDiff(nzc,fTcross,t_even,t_odd);
       ClearNZCArrays();
@@ -461,7 +461,7 @@ namespace UMass {
 	 rc = CheckOffset(offset_old,offset_new,t_diff_old,t_diff_new,slope);
 	 if(rc>0) break;
 	 ApplyOffset(offset_new,myPulse);
-	 nzc = Utility::CountZeroCrossings(fParameters.verbosity,type,NPTS,stepSize,UseRange,tMin,tMax,
+	 nzc = Utility::CountZeroCrossings(fParameters.verbosity,type,NPTS,stepSize,UseRange,tMin,tMax,fParameters.useT2Time,
 	       myPulse,fX,fY,fEY,fNCrossing,fCrossingIndex,fTcross,fVcross);
 	 t_diff_new = GetTDiff(nzc,fTcross,t_even,t_odd);
 	 slope      = (t_diff_new - t_diff_old)/(offset_new - offset_old);

@@ -1,8 +1,8 @@
 #----------------------------------------------------------------------------
 # Setup the project
 cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
-project(UMassZC)
-set (LIB_NAME "UMass-ZC")
+project(test)
+set(EXE_NAME "test") 
 
 #----------------------------------------------------------------------------
 # Setup GNUInstallDirs for installation
@@ -38,13 +38,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #----------------------------------------------------------------------------
 # Directories relevant for this project 
-include_directories(${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}/include)
+include_directories(
+${PROJECT_SOURCE_DIR}/include 
+${PROJECT_SOURCE_DIR}/src 
+${CMAKE_CURRENT_BINARY_DIR}/include
+)
 
 #----------------------------------------------------------------------------
 # Sources and headers for the project 
 file(GLOB SOURCES ${PROJECT_SOURCE_DIR}/src/*.cc)
 file(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.hh)
+
+#----------------------------------------------------------------------------
+# link against UMass-ZC
+set(UMZC_LIB "UMass-ZC")  
+include_directories($ENV{UMZCSYS}/include) 
+link_directories($ENV{UMZCSYS}/lib)
 
 #----------------------------------------------------------------------------
 # link against gsl 
@@ -53,12 +62,12 @@ include_directories($ENV{GSLSYS}/include)
 link_directories($ENV{GSLSYS}/lib)
 
 #----------------------------------------------------------------------------
-# Generate the shared library from sources 
-add_library (${LIB_NAME} SHARED ${SOURCES})
-target_link_libraries(${LIB_NAME} ${GSL_LIB})
+# Generate the executable 
+add_executable(${EXE_NAME} ${SOURCES} ${PROJECT_SOURCE_DIR}/${EXE_NAME}.cc)
+target_link_libraries(${EXE_NAME} ${UMZC_LIB} ${GSL_LIB})
 
 #----------------------------------------------------------------------------
 # Install items 
-install (TARGETS ${LIB_NAME} DESTINATION ${INSTALL_DIR})
+install (TARGETS ${EXE_NAME} DESTINATION ${INSTALL_DIR})
 install (FILES ${HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 # install(DIRECTORY ${PROJECT_SOURCE_DIR}/examples DESTINATION ${CMAKE_INSTALL_PREFIX})
